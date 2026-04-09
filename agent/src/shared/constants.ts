@@ -1,9 +1,6 @@
-export const MAX_CONTENT_CHARS = 8000;
+export const TOP_SEARCH_RESULTS = 5;
 export const MAX_SUMMARY_INPUT_CHARS = 4000;
 export const MAX_SUMMARY_OUTPUT_CHARS = 2500;
-export const MAX_BODY_BYTES = 2 * 1024 * 1024; // 2 MB
-export const FETCH_TIMEOUT_MS = 10_000;
-export const TOP_SEARCH_RESULTS = 5;
 export const TAVILY_MAX_RESULTS = 5;
 export const MAX_SNIPPET_CHARS = 220;
 export const RATE_LIMIT_WINDOW_MS = 60_000;
