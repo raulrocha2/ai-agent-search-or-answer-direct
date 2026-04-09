@@ -16,6 +16,16 @@ export const finalValidate = RunnableLambda.from(async (input: candidate) => {
   const repairDraft = await repairSearchAnswer(finalDraft);
   const repairDraftSchema = SearchAnswerSchema.safeParse(repairDraft);
   if (repairDraftSchema.success) return repairDraftSchema.data;
+
+  return {
+    answer:
+      typeof input.answer === "string" && input.answer.trim()
+        ? input.answer.trim()
+        : "Sorry, I could not generate a valid answer. Please try again.",
+    sources: Array.isArray(input.sources)
+      ? input.sources.filter((s: unknown) => typeof s === "string")
+      : [],
+  } satisfies SearchAnswerType;
 });
 
 async function repairSearchAnswer(obj: any): Promise<SearchAnswerType> {

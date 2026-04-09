@@ -17,12 +17,11 @@ const envSchema = z.object({
     .default("gemini"),
 });
 
-export const env = envSchema.parse(process.env);
+const result = envSchema.safeParse(process.env);
 
-export function loadEnv(): void {
-  const result = envSchema.safeParse(process.env);
-  if (!result.success) {
-    console.error("Invalid environment variables:", result.error.format());
-    process.exit(1);
-  }
+if (!result.success) {
+  console.error("Invalid environment variables:", result.error.format());
+  process.exit(1);
 }
+
+export const env = result.data;

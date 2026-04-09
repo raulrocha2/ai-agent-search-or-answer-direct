@@ -1,4 +1,3 @@
-import { Response } from "express";
 import { env } from "../shared/env";
 import {
   WebSearchResultSchema,
@@ -6,10 +5,9 @@ import {
   WebSearchResultsSchema,
 } from "./schemas";
 import { tavily } from "@tavily/core";
+import { TAVILY_MAX_RESULTS, MAX_SNIPPET_CHARS } from "../shared/constants";
 
 export async function webSearch(query: string): Promise<WebSearchResults> {
-  console.log("Searching with provider:", env.SEARCH_PROVIDER);
-  console.log("Websearch Query:", query);
   const queryTrimmed = (query ?? "").trim();
   if (!queryTrimmed) return [];
   return searchTavily(queryTrimmed);
@@ -23,7 +21,7 @@ async function searchTavily(query: string): Promise<WebSearchResults> {
   try {
     const tavilyClient = await tavily({ apiKey: env.TAVILY_API_KEY });
     responseTavily = await tavilyClient.search(query, {
-      maxResults: 5,
+      maxResults: TAVILY_MAX_RESULTS,
       searchDepth: "basic",
       includeContent: true,
       includeAnswers: false,
@@ -39,22 +37,18 @@ async function searchTavily(query: string): Promise<WebSearchResults> {
       `Tavily returned no results for "${query}": ${JSON.stringify(responseTavily)}`,
     );
   }
-  const parsedResults = responseTavily.results.slice(0, 5).map((result) =>
-    WebSearchResultSchema.parse({
-      title: String(result.title ?? "").trim() || "Untitled",
-      url: String(result.url ?? "").trim(),
-      snippet: String(result.content ?? "")
-        .trim()
-        .slice(0, 220),
-    }),
-  );
-  return WebSearchResultsSchema.parse(parsedResults);
-}
 
-async function safeText(res: Response) {
-  try {
-    return await res.json();
-  } catch (error) {
-    return "<no body data>";
-  }
+  const parsedResults = responseTavily.results
+    .slice(0, TAVILY_MAX_RESULTS)
+    .map((result) =>
+      WebSearchResultSchema.parse({
+        title: String(result.title ?? "").trim() || "Untitled",
+        url: String(result.url ?? "").trim(),
+        snippet: String(result.content ?? "")
+          .trim()
+          .slice(0, MAX_SNIPPET_CHARS),
+      }),
+    );
+
+  return WebSearchResultsSchema.parse(parsedResults);
 }

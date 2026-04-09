@@ -1,0 +1,9 @@
+export const TOP_SEARCH_RESULTS = 5;
+export const MAX_SUMMARY_INPUT_CHARS = 4000;
+export const MAX_SUMMARY_OUTPUT_CHARS = 2500;
+export const TAVILY_MAX_RESULTS = 5;
+export const MAX_SNIPPET_CHARS = 220;
+export const RATE_LIMIT_WINDOW_MS = 60_000;
+export const RATE_LIMIT_MAX_REQUESTS = 20;
+export const MAX_QUERY_LENGTH = 500;
+export const JSON_BODY_LIMIT = "10kb";

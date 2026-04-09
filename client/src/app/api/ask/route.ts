@@ -1,25 +1,32 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3001";
 
-export async function ask(query: string): Promise<NextResponse>{
-    try {
-        const apiResponse = await fetch(`${BACKEND_URL}/ask`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query }),
-    });
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  try {
+    const body = await req.json();
+    const query = typeof body?.query === "string" ? body.query.trim() : "";
 
-    if (!apiResponse.ok) {
-        const errorData = await apiResponse.json();
-        return NextResponse.json({ error: errorData.error || "An error occurred while processing your request." }, { status: apiResponse.status });
+    if (!query || query.length < 5) {
+      return NextResponse.json(
+        { error: "Query must be at least 5 characters." },
+        { status: 400 },
+      );
     }
+
+    const apiResponse = await fetch(`${BACKEND_URL}/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(30_000),
+    });
 
     const data = await apiResponse.json();
     return NextResponse.json(data, { status: apiResponse.status });
-    } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "An unknown error occurred." }, { status: 500 });
-    }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "An unknown error occurred.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
