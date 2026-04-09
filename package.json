@@ -1,0 +1,9 @@
+{
+  "name": "ai-agent-search",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "dev:agent": "pnpm --filter @search/agent dev",
+    "dev:client": "pnpm --filter @search/client dev"
+  }
+}
