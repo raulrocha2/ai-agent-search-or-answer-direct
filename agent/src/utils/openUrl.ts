@@ -1,34 +1,80 @@
 import { convert } from "html-to-text";
 import { OpenUrlOutputSchema } from "./schemas";
+import {
+  MAX_CONTENT_CHARS,
+  FETCH_TIMEOUT_MS,
+  MAX_BODY_BYTES,
+} from "../shared/constants";
+
+export function validateUrl(url: string): string {
+  const urlObj = new URL(url);
+  if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+    throw new Error(`Invalid protocol: ${urlObj.protocol}`);
+  }
+  return urlObj.toString();
+}
+
+async function readBodyWithLimit(
+  res: globalThis.Response,
+  maxBytes: number,
+): Promise<string> {
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("Response has no body");
+
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.length;
+      if (totalBytes > maxBytes) {
+        chunks.push(value.slice(0, value.length - (totalBytes - maxBytes)));
+        break;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.cancel();
+  }
+
+  const combined = new Uint8Array(
+    chunks.reduce((sum, c) => sum + c.length, 0),
+  );
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return new TextDecoder().decode(combined);
+}
 
 export async function openUrl(url: string) {
-  // Step 1: Validate the URL
   const validatedUrl = validateUrl(url);
 
-  // Step 2: Fetch the URL and get the HTML
   const res = await fetch(validatedUrl, {
-    headers: {
-      "User-Agent": "agent-core/1.0",
-    },
+    headers: { "User-Agent": "agent-core/1.0" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
+
   if (!res.ok) {
     const body = await safeText(res);
     throw new Error(
-      `Failed to fetch URL: ${res.status} - ${body.slice(0, 20)}`,
+      `Failed to fetch URL: ${res.status} - ${body.slice(0, 200)}`,
     );
   }
-  // Step 3:
-  const contentType = res.headers.get("content-type");
-  const raw = await res.text();
 
-  // Step 4: Parse the HTML  to Plain Text
+  const contentType = res.headers.get("content-type");
+  const raw = await readBodyWithLimit(res, MAX_BODY_BYTES);
+
   const text = contentType?.includes("text/html")
-    ? await parseHtmlToText(raw)
+    ? parseHtmlToText(raw)
     : raw;
 
-  // Step 5: Remove whitespace
   const cleanedText = collapseWhitespace(text);
-  const cappedText = cleanedText.slice(0, 8000);
+  const cappedText = cleanedText.slice(0, MAX_CONTENT_CHARS);
+
   return OpenUrlOutputSchema.parse({
     url: validatedUrl,
     content: cappedText,
@@ -38,41 +84,24 @@ export async function openUrl(url: string) {
 function collapseWhitespace(text: string) {
   return text.replace(/\s+/g, " ").trim();
 }
-async function parseHtmlToText(raw: string) {
+
+function parseHtmlToText(raw: string) {
   return convert(raw, {
     wordwrap: false,
     selectors: [
       { selector: "header", format: "skip" },
-      {
-        selector: "nav",
-        format: "skip",
-      },
-      {
-        selector: "footer",
-        format: "skip",
-      },
+      { selector: "nav", format: "skip" },
+      { selector: "footer", format: "skip" },
       { selector: "script", format: "skip" },
       { selector: "style", format: "skip" },
     ],
   });
 }
 
-export function validateUrl(url: string) {
-  try {
-    const urlObj = new URL(url);
-    if (urlObj.protocol !== "http" && urlObj.protocol !== "https") {
-      throw new Error("Invalid URL");
-    }
-    return urlObj.toString();
-  } catch (error) {
-    throw new Error(`Invalid URL: ${url}`);
-  }
-}
-
-async function safeText(res: Response) {
+async function safeText(res: globalThis.Response) {
   try {
     return await res.text();
-  } catch (error) {
+  } catch {
     return "<no body data>";
   }
 }

@@ -19,10 +19,20 @@ type CurrentChatTurn =
       error?: string;
     };
 
+function isHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [chat, setChat] = useState<CurrentChatTurn[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -34,6 +44,12 @@ export default function Home() {
     }
   }, [chat]);
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   async function handleChatSubmit(e: FormEvent) {
     e.preventDefault();
     const prompt = query.trim();
@@ -43,32 +59,41 @@ export default function Home() {
   }
 
   async function runSearch(prompt: string) {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setChat((prev) => [...prev, { role: "user", content: prompt }]);
-    const oldTime = performance.now();
-    const timeDiff = Math.round(performance.now() - oldTime);
+    const startTime = performance.now();
+
     try {
       const response = await fetch(`${API_URL}/search`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: prompt }),
+        signal: controller.signal,
       });
+
       const data = await response.json();
+      const timeDiff = Math.round(performance.now() - startTime);
+
       if (!response.ok) {
         setChat((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: data.error,
+            content:
+              data.error ?? "An error occurred while processing your request.",
             sources: [],
             time: timeDiff,
             error:
-              "I tried to answer your query, but I encountered an error. try again later.",
+              "I tried to answer your query, but I encountered an error. Try again later.",
           },
         ]);
+        return;
       }
+
       setChat((prev) => [
         ...prev,
         {
@@ -78,15 +103,15 @@ export default function Home() {
           time: timeDiff,
         },
       ]);
-      setLoading(false);
     } catch (error) {
-      setLoading(false);
+      if (controller.signal.aborted) return;
+      const timeDiff = Math.round(performance.now() - startTime);
       setChat((prev) => [
         ...prev,
         {
           role: "assistant",
           content:
-            "I tried to answer your query, but I encountered an error. try again later.",
+            "I tried to answer your query, but I encountered an error. Try again later.",
           sources: [],
           time: timeDiff,
           error:
@@ -99,6 +124,7 @@ export default function Home() {
       setLoading(false);
     }
   }
+
   return (
     <div className="flex h-dvh flex-col bg-[#f9fafb] text-gray-900">
       <header className="border-b bg-white px-4 py-3 text-sm flex items-center justify-between">
@@ -108,13 +134,13 @@ export default function Home() {
           </span>
           <span className="text-[12px] text-gray-500">
             Answer with sources. Some queries will browse the web and some
-            don't.
+            don&apos;t.
           </span>
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
         {chat.length === 0 && (
-          <div className="mx-auto max-2-2xl text-center text-sm text-gray-500">
+          <div className="mx-auto max-w-2xl text-center text-sm text-gray-500">
             <div className="text-base font-semibold text-gray-800 mb-1">
               Ask anything
             </div>
@@ -132,7 +158,6 @@ export default function Home() {
           </div>
         )}
         {chat.map((turn, idx) => {
-          // user role
           if (turn.role === "user") {
             return (
               <div
@@ -148,7 +173,6 @@ export default function Home() {
             );
           }
 
-          // assistant role
           return (
             <div
               key={idx}
@@ -163,28 +187,30 @@ export default function Home() {
                 </div>
                 <div className="text-[11px] text-gray-500 flex flex-wrap items-center gap-x-2">
                   {typeof turn.time === "number" && (
-                    <span>answered in {turn.time} time</span>
+                    <span>answered in {turn.time}ms</span>
                   )}
                   {turn?.error && <span>{turn.error}</span>}
                 </div>
                 {turn.sources && turn.sources.length > 0 && (
-                  <div className="rounded-lg  bg-white px-3 py-2 text-[12px] shadow-sm ring-1 ring-gray-200">
+                  <div className="rounded-lg bg-white px-3 py-2 text-[12px] shadow-sm ring-1 ring-gray-200">
                     <div className="text-[11px] font-medium text-gray-600 mb-1">
                       Sources
                     </div>
                     <ul className="space-y-1">
-                      {turn.sources.map((source, idx) => (
-                        <li key={idx} className="truncate">
-                          <Link
-                            href={source}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-500 underline underline-offset-4 break-all"
-                          >
-                            {source}
-                          </Link>
-                        </li>
-                      ))}
+                      {turn.sources
+                        .filter(isHttpUrl)
+                        .map((source, srcIdx) => (
+                          <li key={srcIdx} className="truncate">
+                            <Link
+                              href={source}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-500 underline underline-offset-4 break-all"
+                            >
+                              {source}
+                            </Link>
+                          </li>
+                        ))}
                     </ul>
                   </div>
                 )}

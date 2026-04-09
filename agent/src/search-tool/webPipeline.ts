@@ -10,8 +10,7 @@ import { summarize } from "../utils/summarize";
 import { getChatModel } from "../shared/models";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { candidate } from "./types";
-
-const setTopResult = 5;
+import { TOP_SEARCH_RESULTS } from "../shared/constants";
 
 export const webSearchStep = RunnableLambda.from(
   async (input: SearchOutputType) => {
@@ -34,7 +33,7 @@ export const openAndSummarizeStep = RunnableLambda.from(
         fallback: "no-results" as const,
       };
     }
-    const extractTopResult = results.slice(0, setTopResult);
+    const extractTopResult = results.slice(0, TOP_SEARCH_RESULTS);
     const settledResults = await Promise.allSettled(
       extractTopResult.map(async (result) => {
         const openedUrl = await openUrl(result.url);
@@ -105,7 +104,7 @@ export const composeStep = RunnableLambda.from(
         [
           "You concisely answer questions using provided page summaries",
           "Rules:",
-          "- Be accurate and netral",
+          "- Be accurate and neutral",
           "- 5-8 sentences max",
           "- Use only the provided summaries; do not invent new facts",
         ].join("\n"),
