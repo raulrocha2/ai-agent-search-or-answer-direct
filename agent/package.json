@@ -1,5 +1,5 @@
 {
-  "name": "01_hello_agent",
+  "name": "@search/agent",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
