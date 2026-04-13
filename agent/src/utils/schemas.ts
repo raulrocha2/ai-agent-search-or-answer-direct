@@ -70,3 +70,15 @@ export const SearchAnswerSchema = z.object({
 });
 
 export type SearchAnswerType = z.infer<typeof SearchAnswerSchema>;
+
+export const KBARAGInputSchema = z.object({
+  query: z.string().min(5, "Query is required please provide a query"),
+  source: z.string().optional(),
+});
+export type KBARAGInputType = z.infer<typeof KBARAGInputSchema>;
+
+export const KBAASKRAGInputSchema = z.object({
+  query: z.string().min(5, "Query is required please provide a query"),
+  k: z.number().int().min(1).max(10).optional(),
+});
+export type KBAASKRAGInputType = z.infer<typeof KBAASKRAGInputSchema>;

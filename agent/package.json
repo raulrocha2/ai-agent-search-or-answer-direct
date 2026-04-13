@@ -20,6 +20,8 @@
     "typescript": "^6.0.2"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@langchain/classic": "^1.0.30",
     "@langchain/core": "^1.1.39",
     "@langchain/google": "^0.1.10",
     "@langchain/google-genai": "^2.1.26",

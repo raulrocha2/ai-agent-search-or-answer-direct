@@ -4,6 +4,7 @@ import cors from "cors";
 import { searchLcel } from "./router/search_lcel";
 import { env } from "./shared/env";
 import { JSON_BODY_LIMIT } from "./shared/constants";
+import { lightRagKbRouter } from "./router/light_rag_kb";
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.get("/ping", (_req: Request, res: Response) => {
 });
 
 app.use("/search", searchLcel);
+app.use("/rag", lightRagKbRouter);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Unhandled error:", err);
