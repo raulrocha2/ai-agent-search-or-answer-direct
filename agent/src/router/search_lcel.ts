@@ -3,11 +3,23 @@ import { runSearch } from "../search-tool/runBranch";
 import { Request, Response } from "express";
 import { SearchInputSchema } from "../utils/schemas";
 import { ZodError } from "zod";
-import { MAX_QUERY_LENGTH } from "../shared/constants";
+import {
+  MAX_QUERY_LENGTH,
+  THROTTLE_MAX_CONCURRENCY,
+  THROTTLE_MAX_QUEUE_SIZE,
+  THROTTLE_QUEUE_TIMEOUT_MS,
+} from "../shared/constants";
+import { createThrottle } from "../middleware/throttle";
+
+const throttle = createThrottle({
+  maxConcurrency: THROTTLE_MAX_CONCURRENCY,
+  maxQueueSize: THROTTLE_MAX_QUEUE_SIZE,
+  queueTimeoutMs: THROTTLE_QUEUE_TIMEOUT_MS,
+});
 
 export const searchLcel = Router();
 
-searchLcel.post("/", async (req: Request, res: Response) => {
+searchLcel.post("/", throttle, async (req: Request, res: Response) => {
   try {
     if (
       typeof req.body?.query === "string" &&

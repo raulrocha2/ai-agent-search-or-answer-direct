@@ -1,14 +1,9 @@
 import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
 import { searchLcel } from "./router/search_lcel";
 import { env } from "./shared/env";
-import {
-  RATE_LIMIT_WINDOW_MS,
-  RATE_LIMIT_MAX_REQUESTS,
-  JSON_BODY_LIMIT,
-} from "./shared/constants";
+import { JSON_BODY_LIMIT } from "./shared/constants";
 
 const app = express();
 
@@ -19,16 +14,6 @@ app.use(
 );
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
-
-app.use(
-  rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: RATE_LIMIT_MAX_REQUESTS,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please try again later." },
-  }),
-);
 
 app.get("/ping", (_req: Request, res: Response) => {
   res.send("pong");
